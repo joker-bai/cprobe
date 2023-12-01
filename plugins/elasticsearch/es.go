@@ -19,16 +19,11 @@ import (
 )
 
 type Global struct {
-	User                  string   `toml:"user"`
-	Password              string   `toml:"password"`
-	SslCa                 string   `toml:"ssl_ca"`
-	SslCert               string   `toml:"ssl_cert"`
-	SslKey                string   `toml:"ssl_key"`
-	TlsInsecureSkipVerify bool     `toml:"ssl_skip_verfication"`
-	Tls                   string   `toml:"tls"`
-	ScraperEnabled        []string `toml:"scraper_enabled"`
-	LockWaitTimeout       int      `toml:"lock_wait_timeout"`
-	LogSlowFilter         bool     `toml:"log_slow_filter"`
+	User            string `toml:"user"`
+	Password        string `toml:"password"`
+	EsCa            string `toml:"es_ca"`
+	EsClientCert    string `toml:"es_client_cert"`
+	EsSSLSkipVerify string `toml:"es_ssl_skip_verify"`
 }
 
 func (g Global) FormDSN(target string) (string, error) {
