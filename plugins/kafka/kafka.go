@@ -6,6 +6,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/Shopify/sarama"
+	"github.com/cprobe/cprobe/lib/cgroup"
 	"github.com/cprobe/cprobe/lib/logger"
 	"github.com/cprobe/cprobe/plugins"
 	"github.com/cprobe/cprobe/plugins/kafka/exporter"
@@ -47,11 +48,12 @@ type Global struct {
 
 	OffsetShowAll    *bool `toml:"offset_show_all" description:"Whether show the offset/lag for all consumer group, otherwise, only show connected consumer groups"`
 	ConcurrentEnable bool  `toml:"concurrent_enable" description:"If true, all scrapes will trigger kafka operations otherwise, they will share results. WARN: This should be disabled on large clusters"`
-	TopicWorks       int   `toml:"topic_works" description:"Number of topic workers"`
+	TopicWorkers     int   `toml:"topic_workers" description:"Number of topic workers"`
 }
 
 type Config struct {
-	Global Global `toml:"global"`
+	BaseDir string `toml:"-"`
+	Global  Global `toml:"global"`
 }
 
 type Kafka struct {
@@ -62,12 +64,14 @@ func init() {
 	plugins.RegisterPlugin(types.PluginKafka, &Kafka{})
 }
 
-func (*Kafka) ParseConfig(bs []byte) (any, error) {
+func (*Kafka) ParseConfig(baseDir string, bs []byte) (any, error) {
 	var c Config
 	err := toml.Unmarshal(bs, &c)
 	if err != nil {
 		return nil, err
 	}
+
+	c.BaseDir = baseDir
 
 	if c.Global.Namespace == "" {
 		c.Global.Namespace = "kafka"
@@ -84,24 +88,16 @@ func (*Kafka) ParseConfig(bs []byte) (any, error) {
 		c.Global.OffsetShowAll = &b
 	}
 
-	if c.Global.TopicWorks == 0 {
-		c.Global.TopicWorks = 100
+	if c.Global.TopicWorkers == 0 {
+		c.Global.TopicWorkers = cgroup.AvailableCPUs() * 2
 	}
 
 	if c.Global.TopicFilter == "" {
 		c.Global.TopicFilter = ".*"
 	}
 
-	if c.Global.TopicExclude == "" {
-		c.Global.TopicExclude = "^$"
-	}
-
 	if c.Global.GroupFilter == "" {
 		c.Global.GroupFilter = ".*"
-	}
-
-	if c.Global.GroupExclude == "" {
-		c.Global.GroupExclude = "^$"
 	}
 
 	return &c, nil
@@ -136,16 +132,18 @@ func (*Kafka) Scrape(ctx context.Context, target string, c any, ss *types.Sample
 		KeyTabPath:               conf.SaslKeytabPath,
 		KerberosAuthType:         conf.SaslKerberosAuthType,
 		OffsetShowAll:            *conf.OffsetShowAll,
-		TopicWorkers:             conf.TopicWorks,
+		TopicWorkers:             conf.TopicWorkers,
 	}
 
 	exp, err := exporter.NewExporter(opts, conf.TopicFilter, conf.TopicExclude, conf.GroupFilter, conf.GroupExclude)
 	if err != nil {
 		ss.AddMetric(opts.Namespace, map[string]interface{}{"up": 0.0})
-		return errors.Wrap(err, "failed to create kafka exporter")
+		return errors.Wrapf(err, "failed to create kafka exporter: %s, error: %v", target, err)
 	} else {
 		ss.AddMetric(opts.Namespace, map[string]interface{}{"up": 1.0})
 	}
+
+	defer exp.CloseClient()
 
 	ch := make(chan prometheus.Metric)
 	go func() {

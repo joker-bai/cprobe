@@ -22,17 +22,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func makeJobs() map[string]map[JobID]*JobGoroutine {
-	return map[string]map[JobID]*JobGoroutine{
-		types.PluginMySQL:         make(map[JobID]*JobGoroutine),
-		types.PluginRedis:         make(map[JobID]*JobGoroutine),
-		types.PluginMongoDB:       make(map[JobID]*JobGoroutine),
-		types.PluginPostgreSQL:    make(map[JobID]*JobGoroutine),
-		types.PluginElasticSearch: make(map[JobID]*JobGoroutine),
-		types.PluginKafka:         make(map[JobID]*JobGoroutine),
-	}
-}
-
 var (
 	Jobs = makeJobs()
 )
@@ -154,7 +143,7 @@ func (j *JobGoroutine) run(ctx context.Context) {
 		return
 	}
 
-	config, err := plugin.ParseConfig(tomlBytes)
+	config, err := plugin.ParseConfig(j.scrapeConfig.ConfigRef.BaseDir, tomlBytes)
 	if err != nil {
 		logger.Errorf("job(%s) parse plugin config error: %s", jobName, err)
 		return
