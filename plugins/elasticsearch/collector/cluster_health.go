@@ -16,13 +16,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -46,7 +45,6 @@ type clusterHealthStatusMetric struct {
 
 // ClusterHealth type defines the collector struct
 type ClusterHealth struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -58,11 +56,10 @@ type ClusterHealth struct {
 }
 
 // NewClusterHealth returns a new Collector exposing ClusterHealth stats.
-func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
+func NewClusterHealth(client *http.Client, url *url.URL) *ClusterHealth {
 	subsystem := "cluster_health"
 
 	return &ClusterHealth{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -245,10 +242,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(c.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
+			logger.Errorf("msg", "failed to close http.Client", "err", err)
 		}
 	}()
 
@@ -283,10 +277,7 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
-		level.Warn(c.logger).Log(
-			"msg", "failed to fetch and decode cluster health",
-			"err", err,
-		)
+		logger.Errorf("msg", "failed to fetch and decode cluster health", "err", err)
 		return
 	}
 	c.up.Set(1)

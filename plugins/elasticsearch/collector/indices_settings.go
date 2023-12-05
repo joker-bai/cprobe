@@ -16,20 +16,18 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // IndicesSettings information struct
 type IndicesSettings struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -52,9 +50,8 @@ type indicesSettingsMetric struct {
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+func NewIndicesSettings(client *http.Client, url *url.URL) *IndicesSettings {
 	return &IndicesSettings{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -127,7 +124,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(cs.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -179,7 +176,7 @@ func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		cs.readOnlyIndices.Set(0)
 		cs.up.Set(0)
-		level.Warn(cs.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode cluster settings stats",
 			"err", err,
 		)

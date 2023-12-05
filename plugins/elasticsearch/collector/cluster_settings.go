@@ -39,11 +39,10 @@ type ClusterSettingsCollector struct {
 	hc     *http.Client
 }
 
-func NewClusterSettings(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterSettings(u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterSettingsCollector{
-		logger: logger,
-		u:      u,
-		hc:     hc,
+		u:  u,
+		hc: hc,
 	}, nil
 }
 

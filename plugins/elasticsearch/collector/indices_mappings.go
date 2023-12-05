@@ -16,13 +16,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -38,7 +37,6 @@ type indicesMappingsMetric struct {
 
 // IndicesMappings information struct
 type IndicesMappings struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -49,11 +47,10 @@ type IndicesMappings struct {
 }
 
 // NewIndicesMappings defines Indices IndexMappings Prometheus metrics
-func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *IndicesMappings {
+func NewIndicesMappings(client *http.Client, url *url.URL) *IndicesMappings {
 	subsystem := "indices_mappings_stats"
 
 	return &IndicesMappings{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -136,13 +133,13 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
+		logger.Errorf("msg", "failed to read response body", "err", err)
 		return nil, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
+		logger.Errorf("msg", "failed to close response body", "err", err)
 		return nil, err
 	}
 
@@ -174,7 +171,7 @@ func (im *IndicesMappings) Collect(ch chan<- prometheus.Metric) {
 	indicesMappingsResponse, err := im.fetchAndDecodeIndicesMappings()
 	if err != nil {
 		im.up.Set(0)
-		level.Warn(im.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode cluster mappings stats",
 			"err", err,
 		)

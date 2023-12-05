@@ -16,13 +16,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -42,7 +41,6 @@ var (
 
 // DataStream Information Struct
 type DataStream struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -50,9 +48,8 @@ type DataStream struct {
 }
 
 // NewDataStream defines DataStream Prometheus metrics
-func NewDataStream(logger log.Logger, client *http.Client, url *url.URL) *DataStream {
+func NewDataStream(client *http.Client, url *url.URL) *DataStream {
 	return &DataStream{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -106,7 +103,7 @@ func (ds *DataStream) fetchAndDecodeDataStreamStats() (DataStreamStatsResponse, 
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(ds.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -134,7 +131,7 @@ func (ds *DataStream) Collect(ch chan<- prometheus.Metric) {
 
 	dataStreamStatsResp, err := ds.fetchAndDecodeDataStreamStats()
 	if err != nil {
-		level.Warn(ds.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode data stream stats",
 			"err", err,
 		)

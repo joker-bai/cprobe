@@ -16,9 +16,9 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
+	"github.com/cprobe/cprobe/plugins/elasticsearch/pkg/clusterinfo"
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"net/http"
@@ -74,7 +74,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
+func NewIndices(client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -119,7 +119,6 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 
 	indices := &Indices{
-		logger:        logger,
 		client:        client,
 		url:           url,
 		shards:        shards,
@@ -1065,14 +1064,14 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
 	go func() {
-		level.Debug(logger).Log("msg", "starting cluster info receive loop")
+		logger.Infof("msg", "starting cluster info receive loop")
 		for ci := range indices.clusterInfoCh {
 			if ci != nil {
-				level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
+				logger.Infof("msg", "received cluster info update", "cluster", ci.ClusterName)
 				indices.lastClusterInfo = ci
 			}
 		}
-		level.Debug(logger).Log("msg", "exiting cluster info receive loop")
+		logger.Infof("msg", "exiting cluster info receive loop")
 	}()
 	return indices
 }
@@ -1123,7 +1122,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		isr.Aliases = map[string][]string{}
 		asr, err := i.fetchAndDecodeAliases()
 		if err != nil {
-			level.Error(i.logger).Log("err", err.Error())
+			logger.Errorf("err", err.Error())
 			return isr, err
 		}
 
@@ -1172,7 +1171,7 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(i.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -1204,7 +1203,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	indexStatsResp, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
 		i.up.Set(0)
-		level.Warn(i.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode index stats",
 			"err", err,
 		)

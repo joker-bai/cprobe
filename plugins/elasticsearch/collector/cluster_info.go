@@ -35,11 +35,10 @@ type ClusterInfoCollector struct {
 	hc     *http.Client
 }
 
-func NewClusterInfo(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterInfo(u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterInfoCollector{
-		logger: logger,
-		u:      u,
-		hc:     hc,
+		u:  u,
+		hc: hc,
 	}, nil
 }
 

@@ -16,13 +16,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -57,7 +56,6 @@ var (
 
 // SLM information struct
 type SLM struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -70,9 +68,8 @@ type SLM struct {
 }
 
 // NewSLM defines SLM Prometheus metrics
-func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
+func NewSLM(client *http.Client, url *url.URL) *SLM {
 	return &SLM{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -276,7 +273,7 @@ func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(s.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -315,7 +312,7 @@ func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(s.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -352,7 +349,7 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 	slmStatusResp, err := s.fetchAndDecodeSLMStatus()
 	if err != nil {
 		s.up.Set(0)
-		level.Warn(s.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode slm status",
 			"err", err,
 		)
@@ -362,7 +359,7 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 	slmStatsResp, err := s.fetchAndDecodeSLMStats()
 	if err != nil {
 		s.up.Set(0)
-		level.Warn(s.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode slm stats",
 			"err", err,
 		)

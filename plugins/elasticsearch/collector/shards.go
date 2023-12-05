@@ -15,12 +15,11 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cprobe/cprobe/lib/logger"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,7 +42,6 @@ type ShardResponse struct {
 
 // Shards information struct
 type Shards struct {
-	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -59,9 +57,8 @@ type nodeShardMetric struct {
 }
 
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
+func NewShards(client *http.Client, url *url.URL) *Shards {
 	return &Shards{
-		logger: logger,
 		client: client,
 		url:    url,
 
@@ -105,7 +102,7 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(s.logger).Log(
+			logger.Errorf(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -137,7 +134,7 @@ func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 	return sfr, err
 }
 
-// Collect number of shards on each nodes
+// Collect number of shards on each node
 func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	defer func() {
@@ -146,7 +143,7 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
-		level.Warn(s.logger).Log(
+		logger.Errorf(
 			"msg", "failed to fetch and decode node shards stats",
 			"err", err,
 		)
