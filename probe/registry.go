@@ -4,6 +4,7 @@ import (
 	"github.com/cprobe/cprobe/types"
 
 	_ "github.com/cprobe/cprobe/plugins/blackbox_http"
+	_ "github.com/cprobe/cprobe/plugins/elasticsearch"
 	_ "github.com/cprobe/cprobe/plugins/kafka"
 	_ "github.com/cprobe/cprobe/plugins/mysql"
 	_ "github.com/cprobe/cprobe/plugins/redis"

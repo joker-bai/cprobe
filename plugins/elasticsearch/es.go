@@ -28,7 +28,8 @@ type Global struct {
 }
 
 type Config struct {
-	Global *Global `toml:"global"`
+	BaseDir string  `toml:"-"`
+	Global  *Global `toml:"global"`
 
 	EsTimeout               time.Duration
 	EsAllNodes              *bool
@@ -116,18 +117,16 @@ func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate
 	return &privateKey, nil
 }
 
-func (*ElasticSearch) ParseConfig(bs []byte) (any, error) {
+func (*ElasticSearch) ParseConfig(baseDir string, bs []byte) (any, error) {
 	var c Config
 	err := toml.Unmarshal(bs, &c)
 	if err != nil {
 		return nil, err
 	}
 
+	c.BaseDir = baseDir
+
 	return &c, nil
-}
-
-func aaa() {
-
 }
 
 // Scrape elasticsearch_exporter 原来的很多参数都是通过命令行传的，在 cprobe 的场景下，需要改造
