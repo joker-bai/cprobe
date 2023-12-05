@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
 
@@ -31,22 +32,22 @@ type Config struct {
 	BaseDir string  `toml:"-"`
 	Global  *Global `toml:"global"`
 
-	EsTimeout               time.Duration
-	EsAllNodes              *bool
-	EsNode                  string
-	EsExportIndices         *bool
-	EsExportIndicesSettings *bool
-	EsExportIndicesMappings *bool
-	EsExportIndexAliases    *bool
-	EsExportILM             *bool
-	EsExportShards          *bool
-	EsExportSLM             *bool
-	EsExportDataStream      *bool
-	EsClusterInfoInterval   time.Duration
-	EsCA                    string
-	EsClientPrivateKey      string
-	EsClientCert            string
-	EsInsecureSkipVerify    *bool
+	EsTimeout               time.Duration `toml:"es_timeout"`
+	EsAllNodes              *bool         `toml:"es_all_nodes"`
+	EsNode                  string        `toml:"es_node"`
+	EsExportIndices         *bool         `toml:"es_export_indices"`
+	EsExportIndicesSettings *bool         `toml:"es_export_indices_settings"`
+	EsExportIndicesMappings *bool         `toml:"es_export_indices_mappings"`
+	EsExportIndexAliases    *bool         `toml:"es_export_index_aliases"`
+	EsExportILM             *bool         `toml:"es_export_ilm"`
+	EsExportShards          *bool         `toml:"es_export_shards"`
+	EsExportSLM             *bool         `toml:"es_export_slm"`
+	EsExportDataStream      *bool         `toml:"es_export_data_stream"`
+	EsClusterInfoInterval   time.Duration `toml:"es_cluster_info_interval"`
+	EsCA                    string        `toml:"es_ca"`
+	EsClientPrivateKey      string        `toml:"es_client_private_key"`
+	EsClientCert            string        `toml:"es_client_cert"`
+	EsInsecureSkipVerify    *bool         `toml:"es_insecure_skip_verify"`
 }
 
 type ElasticSearch struct {
@@ -136,6 +137,9 @@ func (*ElasticSearch) ParseConfig(baseDir string, bs []byte) (any, error) {
 func (*ElasticSearch) Scrape(ctx context.Context, address string, c any, ss *types.Samples) error {
 	// 这个方法中如果要对配置 c 变量做修改，一定要 clone 一份之后再修改，因为并发的多个 target 共享了一个 c 变量
 	cfg := c.(*Config)
+	if !strings.Contains(address, "://") {
+		address = "http://" + address
+	}
 
 	esURL, err := url.Parse(address)
 	if err != nil {
