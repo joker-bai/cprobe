@@ -32,6 +32,8 @@ type Config struct {
 	BaseDir string  `toml:"-"`
 	Global  *Global `toml:"global"`
 
+	EsAPIKey string `toml:"es_api_key"`
+
 	EsTimeout               time.Duration `toml:"es_timeout"`
 	EsAllNodes              *bool         `toml:"es_all_nodes"`
 	EsNode                  string        `toml:"es_node"`
@@ -39,15 +41,15 @@ type Config struct {
 	EsExportIndicesSettings *bool         `toml:"es_export_indices_settings"`
 	EsExportIndicesMappings *bool         `toml:"es_export_indices_mappings"`
 	EsExportIndexAliases    *bool         `toml:"es_export_index_aliases"`
-	EsExportILM             *bool         `toml:"es_export_ilm"`
-	EsExportShards          *bool         `toml:"es_export_shards"`
-	EsExportSLM             *bool         `toml:"es_export_slm"`
-	EsExportDataStream      *bool         `toml:"es_export_data_stream"`
-	EsClusterInfoInterval   time.Duration `toml:"es_cluster_info_interval"`
-	EsCA                    string        `toml:"es_ca"`
-	EsClientPrivateKey      string        `toml:"es_client_private_key"`
-	EsClientCert            string        `toml:"es_client_cert"`
-	EsInsecureSkipVerify    *bool         `toml:"es_insecure_skip_verify"`
+	//EsExportILM             *bool         `toml:"es_export_ilm"`
+	EsExportShards        *bool         `toml:"es_export_shards"`
+	EsExportSLM           *bool         `toml:"es_export_slm"`
+	EsExportDataStream    *bool         `toml:"es_export_data_stream"`
+	EsClusterInfoInterval time.Duration `toml:"es_cluster_info_interval"`
+	EsCA                  string        `toml:"es_ca"`
+	EsClientPrivateKey    string        `toml:"es_client_private_key"`
+	EsClientCert          string        `toml:"es_client_cert"`
+	EsInsecureSkipVerify  *bool         `toml:"es_insecure_skip_verify"`
 }
 
 type ElasticSearch struct {
@@ -126,6 +128,45 @@ func (*ElasticSearch) ParseConfig(baseDir string, bs []byte) (any, error) {
 	}
 
 	c.BaseDir = baseDir
+	if c.EsAllNodes == nil {
+		b := false
+		c.EsAllNodes = &b
+	}
+
+	if c.EsExportIndices == nil {
+		b := false
+		c.EsExportIndices = &b
+	}
+
+	if c.EsExportIndicesSettings == nil {
+		b := false
+		c.EsExportIndicesSettings = &b
+	}
+
+	if c.EsExportIndicesMappings == nil {
+		b := false
+		c.EsExportIndicesMappings = &b
+	}
+
+	if c.EsExportIndexAliases == nil {
+		b := true
+		c.EsExportIndexAliases = &b
+	}
+
+	if c.EsExportShards == nil {
+		b := false
+		c.EsExportShards = &b
+	}
+
+	if c.EsExportSLM == nil {
+		b := false
+		c.EsExportSLM = &b
+	}
+
+	if c.EsExportDataStream == nil {
+		b := false
+		c.EsExportDataStream = &b
+	}
 
 	return &c, nil
 }
@@ -163,7 +204,7 @@ func (*ElasticSearch) Scrape(ctx context.Context, address string, c any, ss *typ
 		Proxy:           http.ProxyFromEnvironment,
 	}
 
-	esAPIKey := os.Getenv("ES_API_KEY")
+	esAPIKey := cfg.EsAPIKey
 
 	if esAPIKey != "" {
 		httpTransport = &transportWithAPIKey{
@@ -195,9 +236,12 @@ func (*ElasticSearch) Scrape(ctx context.Context, address string, c any, ss *typ
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(httpClient, esURL, cfg.EsClusterInfoInterval)
 
+	// 监控集群健康状态
 	prometheus.MustRegister(collector.NewClusterHealth(httpClient, esURL))
+	// 监控节点
 	prometheus.MustRegister(collector.NewNodes(httpClient, esURL, *cfg.EsAllNodes, cfg.EsNode))
 
+	// 监控索引和分片
 	if *cfg.EsExportIndices || *cfg.EsExportShards {
 		prometheus.MustRegister(collector.NewShards(httpClient, esURL))
 		iC := collector.NewIndices(httpClient, esURL, *cfg.EsExportShards, *cfg.EsExportIndexAliases)
@@ -208,13 +252,13 @@ func (*ElasticSearch) Scrape(ctx context.Context, address string, c any, ss *typ
 		}
 	}
 
-	if *cfg.EsExportSLM {
-		prometheus.MustRegister(collector.NewSLM(httpClient, esURL))
-	}
+	//if *cfg.EsExportSLM {
+	//	prometheus.MustRegister(collector.NewSLM(httpClient, esURL))
+	//}
 
-	if *cfg.EsExportDataStream {
-		prometheus.MustRegister(collector.NewDataStream(httpClient, esURL))
-	}
+	//if *cfg.EsExportDataStream {
+	//	prometheus.MustRegister(collector.NewDataStream(httpClient, esURL))
+	//}
 
 	if *cfg.EsExportIndicesSettings {
 		prometheus.MustRegister(collector.NewIndicesSettings(httpClient, esURL))
@@ -224,10 +268,10 @@ func (*ElasticSearch) Scrape(ctx context.Context, address string, c any, ss *typ
 		prometheus.MustRegister(collector.NewIndicesMappings(httpClient, esURL))
 	}
 
-	if *cfg.EsExportILM {
-		prometheus.MustRegister(collector.NewIlmStatus(httpClient, esURL))
-		prometheus.MustRegister(collector.NewIlmIndicies(httpClient, esURL))
-	}
+	//if *cfg.EsExportILM {
+	//	prometheus.MustRegister(collector.NewIlmStatus(httpClient, esURL))
+	//	prometheus.MustRegister(collector.NewIlmIndicies(httpClient, esURL))
+	//}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
